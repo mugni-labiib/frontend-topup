@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-// shared_preferences diletakkan jika nanti dipakai untuk menyimpan session token login
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pages/beranda_page.dart';
 import 'pages/game_page.dart';
@@ -9,6 +8,7 @@ import 'pages/bantuan_page.dart';
 import 'pages/topup_page.dart';
 import 'pages/payment_page.dart';
 import 'pages/login_page.dart';
+import 'pages/payment_instruction_page.dart'; // ← TAMBAHKAN IMPORT
 
 void main() {
   runApp(const TopUpZoneFormApp());
@@ -24,12 +24,18 @@ class TopUpZoneFormApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0E1320),
-        appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF101827), elevation: 0),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF101827),
+          elevation: 0,
+        ),
         cardColor: const Color(0xFF111827),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFF141A2B),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
       home: const LoginPage(),
@@ -37,22 +43,36 @@ class TopUpZoneFormApp extends StatelessWidget {
         '/home': (context) => const MainPage(),
         '/login': (context) => const LoginPage(),
         '/topup': (context) => const TopUpFormPage(),
-        '/payment': (context) => const PaymentPage(),
         '/beranda': (context) => const BerandaPage(),
         '/game': (context) => const GamePage(),
         '/promo': (context) => const PromoPage(),
-        '/riwayat': (context) => const RiwayatPage(isAdmin: false),
+        '/riwayat': (context) => const RiwayatPage(),
         '/bantuan': (context) => const BantuanPage(),
       },
       // ✅ onGenerateRoute untuk menangani arguments
       onGenerateRoute: (settings) {
-        if (settings.name == '/home') {
-          final args = settings.arguments as int? ?? 0;
-          return MaterialPageRoute(
-            builder: (context) => MainPage(initialTabIndex: args),
-          );
+        switch (settings.name) {
+          case '/home':
+            final args = settings.arguments as int? ?? 0;
+            return MaterialPageRoute(
+              builder: (context) => MainPage(initialTabIndex: args),
+            );
+          
+          case '/payment':
+            final args = settings.arguments as Map<String, dynamic>?;
+            return MaterialPageRoute(
+              builder: (context) => PaymentPage(transactionData: args),
+            );
+          
+          case '/payment_instruction':
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (context) => PaymentInstructionPage(paymentData: args),
+            );
+          
+          default:
+            return null;
         }
-        return null;
       },
     );
   }
@@ -60,21 +80,22 @@ class TopUpZoneFormApp extends StatelessWidget {
 
 class MainPage extends StatefulWidget {
   final int initialTabIndex;
-  
+
   const MainPage({super.key, this.initialTabIndex = 0});
 
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin {
+class _MainPageState extends State<MainPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 5, 
+      length: 5,
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
@@ -122,7 +143,7 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                     ],
                   ),
                 ),
-                
+
                 // Tab Bar
                 Expanded(
                   child: Center(
@@ -134,7 +155,9 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                         indicatorWeight: 3,
                         labelColor: Colors.white,
                         unselectedLabelColor: Colors.white70,
-                        labelPadding: const EdgeInsets.symmetric(horizontal: 20),
+                        labelPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                        ),
                         labelStyle: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -154,19 +177,29 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
                     ),
                   ),
                 ),
-                
-                // Tombol Login
+
+                // Tombol Logout
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    // Hapus token saat logout
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('token');
+                    await prefs.remove('user');
+                    
                     Navigator.pushReplacementNamed(context, '/login');
                   },
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     backgroundColor: const Color(0xFF7C3AED),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text(
-                    'Login / Daftar',
+                    'Logout',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -183,9 +216,9 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
         controller: _tabController,
         children: const [
           BerandaPage(),
-          GamePage(), // ✅ Halaman Game
+          GamePage(),
           PromoPage(),
-          RiwayatPage(isAdmin: false),
+          RiwayatPage(),
           BantuanPage(),
         ],
       ),

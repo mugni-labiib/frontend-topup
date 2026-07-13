@@ -4,25 +4,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 
 class ApiService {
-  // Get stored token
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
 
-  // Save token
   Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
   }
 
-  // Clear token
   Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
   }
 
-  // Get headers with token
   Future<Map<String, String>> getHeaders() async {
     final token = await getToken();
     return {
@@ -31,7 +27,6 @@ class ApiService {
     };
   }
 
-  // Login
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await http.post(
@@ -45,7 +40,8 @@ class ApiService {
 
       final data = json.decode(response.body);
       
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200) {
+        // Cek apakah ada token di response
         if (data['data']?['token'] != null) {
           await saveToken(data['data']['token']);
         }
@@ -59,8 +55,6 @@ class ApiService {
       };
     }
   }
-
-  // Register
   Future<Map<String, dynamic>> register(String username, String password) async {
     try {
       final response = await http.post(
@@ -81,7 +75,6 @@ class ApiService {
     }
   }
 
-  // Get all games
   Future<Map<String, dynamic>> getGames() async {
     try {
       final response = await http.get(
@@ -98,7 +91,7 @@ class ApiService {
     }
   }
 
-  // Get denominations by game
+
   Future<Map<String, dynamic>> getDenominations(int gameId) async {
     try {
       final response = await http.get(
@@ -115,7 +108,7 @@ class ApiService {
     }
   }
 
-  // Get payment methods
+
   Future<Map<String, dynamic>> getPaymentMethods() async {
     try {
       final response = await http.get(
@@ -132,7 +125,6 @@ class ApiService {
     }
   }
 
-  // Create transaction
   Future<Map<String, dynamic>> createTransaction({
     required int denominationId,
     required int paymentMethodId,
@@ -158,7 +150,7 @@ class ApiService {
     }
   }
 
-  // Get transaction history
+
   Future<Map<String, dynamic>> getTransactionHistory() async {
     try {
       final response = await http.get(
@@ -175,7 +167,7 @@ class ApiService {
     }
   }
 
-  // Get dashboard stats (admin)
+
   Future<Map<String, dynamic>> getDashboardStats() async {
     try {
       final response = await http.get(
@@ -192,7 +184,6 @@ class ApiService {
     }
   }
 
-  // Helper to get image URL
   static String getImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
       return '';

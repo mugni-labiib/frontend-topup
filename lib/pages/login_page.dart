@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,9 +16,16 @@ class _LoginPageState extends State<LoginPage>
   late TabController _tabController;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _registerEmailController = TextEditingController();
+  final TextEditingController _registerPasswordController = TextEditingController();
+  final TextEditingController _registerConfirmPasswordController = TextEditingController();
+  final ApiService _apiService = ApiService();
   bool _rememberMe = false;
   bool _obscurePassword = true;
-
+  bool _obscureRegisterPassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+  
   @override
   void initState() {
     super.initState();
@@ -26,18 +37,32 @@ class _LoginPageState extends State<LoginPage>
     _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _registerEmailController.dispose();
+    _registerPasswordController.dispose();
+    _registerConfirmPasswordController.dispose();
     super.dispose();
   }
 
   void _navigateTo(String route) {
     int tabIndex = 0;
     switch (route) {
-      case 'Beranda': tabIndex = 0; break;
-      case 'Game': tabIndex = 1; break;
-      case 'Promo': tabIndex = 2; break;
-      case 'Riwayat': tabIndex = 3; break;
-      case 'Bantuan': tabIndex = 4; break;
-      default: tabIndex = 0;
+      case 'Beranda':
+        tabIndex = 0;
+        break;
+      case 'Game':
+        tabIndex = 1;
+        break;
+      case 'Promo':
+        tabIndex = 2;
+        break;
+      case 'Riwayat':
+        tabIndex = 3;
+        break;
+      case 'Bantuan':
+        tabIndex = 4;
+        break;
+      default:
+        tabIndex = 0;
     }
     Navigator.pushReplacementNamed(context, '/home', arguments: tabIndex);
   }
@@ -67,7 +92,10 @@ class _LoginPageState extends State<LoginPage>
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 30,
+                    ),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
@@ -107,7 +135,6 @@ class _LoginPageState extends State<LoginPage>
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Left panel - lebih kecil
         Expanded(
           flex: 1,
           child: Container(
@@ -117,11 +144,7 @@ class _LoginPageState extends State<LoginPage>
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.flash_on,
-                      color: Colors.blue[400],
-                      size: 28,
-                    ),
+                    Icon(Icons.flash_on, color: Colors.blue[400], size: 28),
                     const Text(
                       'TOPUP',
                       style: TextStyle(
@@ -188,14 +211,10 @@ class _LoginPageState extends State<LoginPage>
             ),
           ),
         ),
-        // Right panel - Login form (DIKECILKAN)
         Expanded(
           flex: 1,
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 30,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             child: _buildLoginForm(),
           ),
         ),
@@ -211,11 +230,7 @@ class _LoginPageState extends State<LoginPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.flash_on,
-                color: Colors.blue[400],
-                size: 26,
-              ),
+              Icon(Icons.flash_on, color: Colors.blue[400], size: 26),
               const Text(
                 'TOPUP',
                 style: TextStyle(
@@ -265,7 +280,6 @@ class _LoginPageState extends State<LoginPage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Tab Bar - lebih kecil
         Container(
           height: 40,
           decoration: BoxDecoration(
@@ -297,10 +311,10 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
         const SizedBox(height: 12),
-        
+
         // Email Field
         const Text(
-          'Email atau No. HP',
+          'Email atau Username',
           style: TextStyle(
             color: Colors.white,
             fontSize: 11,
@@ -312,7 +326,7 @@ class _LoginPageState extends State<LoginPage>
           controller: _emailController,
           style: const TextStyle(color: Colors.white, fontSize: 13),
           decoration: InputDecoration(
-            hintText: 'Masukkan email atau no. HP',
+            hintText: 'Masukkan email atau username',
             hintStyle: TextStyle(
               color: Colors.white.withOpacity(0.3),
               fontSize: 11,
@@ -330,7 +344,7 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
         const SizedBox(height: 10),
-        
+
         // Password Field
         const Text(
           'Password',
@@ -376,8 +390,7 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
         const SizedBox(height: 8),
-        
-        // Remember me & Forgot password
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -393,26 +406,19 @@ class _LoginPageState extends State<LoginPage>
                         _rememberMe = value ?? false;
                       });
                     },
-                    fillColor: WidgetStateProperty.resolveWith(
-                      (states) {
-                        if (states.contains(WidgetState.selected)) {
-                          return const Color(0xFF7C3AED);
-                        }
-                        return Colors.transparent;
-                      },
-                    ),
-                    side: BorderSide(
-                      color: Colors.white.withOpacity(0.3),
-                    ),
+                    fillColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return const Color(0xFF7C3AED);
+                      }
+                      return Colors.transparent;
+                    }),
+                    side: BorderSide(color: Colors.white.withOpacity(0.3)),
                   ),
                 ),
                 const SizedBox(width: 4),
                 const Text(
                   'Ingat saya',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 10),
                 ),
               ],
             ),
@@ -427,46 +433,44 @@ class _LoginPageState extends State<LoginPage>
               ),
               child: const Text(
                 'Lupa Password?',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 10,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 10),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        
+
         // Login Button
-        ElevatedButton(
-          onPressed: _handleLogin,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF7C3AED),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            elevation: 0,
-          ),
-          child: const Text(
-            'Login',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+        _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF7C3AED),
+                ),
+              )
+            : ElevatedButton(
+                onPressed: _handleLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C3AED),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Login',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
         const SizedBox(height: 12),
-        
-        // Divider
+
         Row(
           children: [
-            Expanded(
-              child: Divider(
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
+            Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
@@ -477,23 +481,16 @@ class _LoginPageState extends State<LoginPage>
                 ),
               ),
             ),
-            Expanded(
-              child: Divider(
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
+            Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
           ],
         ),
         const SizedBox(height: 10),
-        
-        // Google Button
+
         OutlinedButton(
           onPressed: _handleGoogleLogin,
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            side: BorderSide(
-              color: Colors.white.withOpacity(0.2),
-            ),
+            side: BorderSide(color: Colors.white.withOpacity(0.2)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -526,8 +523,7 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
         const SizedBox(height: 10),
-        
-        // Register link
+
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -563,38 +559,87 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  void _handleLogin() {
+  // ==================== INI FUNGSI LOGIN YANG SUDAH DIPERBAIKI ====================
+  
+  Future<void> _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap isi email dan password'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Harap isi email/username dan password')),
       );
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login berhasil!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
-      Navigator.pushReplacementNamed(context, '/home', arguments: 0);
+    setState(() {
+      _isLoading = true;
     });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/api/login'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'username': _emailController.text,   // ✅ SUDAH DIPERBAIKI! 
+          'password': _passwordController.text,
+        }),
+      );
+
+      debugPrint('Response status: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final token = data['data']['token'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        
+        if (data['data']['user'] != null) {
+          await prefs.setString('user', jsonEncode(data['data']['user']));
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login berhasil'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          Navigator.pushReplacementNamed(context, '/home', arguments: 0);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data['message'] ?? 'Login gagal'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
+
+  // ==================== AKHIR FUNGSI LOGIN ====================
 
   void _handleGoogleLogin() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -621,10 +666,7 @@ class _LoginPageState extends State<LoginPage>
       decoration: BoxDecoration(
         color: const Color(0xFF0B1227),
         border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
+          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
         ),
       ),
       child: Row(
@@ -633,11 +675,7 @@ class _LoginPageState extends State<LoginPage>
             onTap: () => _navigateTo('Beranda'),
             child: Row(
               children: [
-                Icon(
-                  Icons.flash_on,
-                  color: const Color(0xFF7C3AED),
-                  size: 20,
-                ),
+                Icon(Icons.flash_on, color: const Color(0xFF7C3AED), size: 20),
                 const SizedBox(width: 4),
                 const Text(
                   'TOPUPZONE',
@@ -667,10 +705,7 @@ class _LoginPageState extends State<LoginPage>
             decoration: BoxDecoration(
               color: const Color(0xFF7C3AED).withOpacity(0.2),
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: const Color(0xFF7C3AED),
-                width: 1,
-              ),
+              border: Border.all(color: const Color(0xFF7C3AED), width: 1),
             ),
             child: const Text(
               'Login / Daftar',
@@ -694,10 +729,7 @@ class _LoginPageState extends State<LoginPage>
         decoration: BoxDecoration(
           border: isActive
               ? const Border(
-                  bottom: BorderSide(
-                    color: Color(0xFF7C3AED),
-                    width: 2,
-                  ),
+                  bottom: BorderSide(color: Color(0xFF7C3AED), width: 2),
                 )
               : null,
         ),
